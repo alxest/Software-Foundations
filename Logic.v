@@ -94,6 +94,10 @@ The _proof term_ for an implication [P -> Q] is a _function_ that takes evidence
 Lemma silly_implication : (1 + 1) = 2  ->  0 * 3 = 0.
 Proof. intros H. reflexivity. Qed.
 
+Definition silly_implication2 : (1 + 1) = 2  ->  0 * 3 = 0
+  := fun _ => eq_refl.
+
+
 (** We can see that the proof term for the above lemma is indeed a
 function: *)
 
@@ -199,6 +203,10 @@ Proof.
   apply conj.
   Case "left". reflexivity.
   Case "right". reflexivity.  Qed.
+
+Definition and_example2: (0 = 0) /\ (4 = mult 2 2)
+                                      := conj (0 = 0) (4 = mult 2 2) eq_refl eq_refl.
+
 
 (** Just for convenience, we can use the tactic [split] as a shorthand for
     [apply conj]. *)
@@ -1040,4 +1048,3 @@ Qed.
 
 
 (* $Date: 2014-06-05 07:22:21 -0400 (Thu, 05 Jun 2014) $ *)
-

@@ -461,14 +461,14 @@ Definition P_m0r' : nat->Prop :=
     appears. *)
 
 Theorem mult_0_r'' : forall n:nat, 
-  P_m0r n.
+  P_m0r' n.
 Proof.
   apply nat_ind.
   Case "n = O". reflexivity.
   Case "n = S n'". 
     (* Note the proof state at this point! *)
     intros n IHn. 
-    unfold P_m0r in IHn. unfold P_m0r. simpl. apply IHn. Qed.
+    unfold P_m0r' in IHn. unfold P_m0r'. simpl. apply IHn. Qed.
 
 (** This extra naming step isn't something that we'll do in
     normal proofs, but it is useful to do it explicitly for an example
@@ -564,6 +564,46 @@ Proof.
     give an explicit [Definition] of the proposition being proved by
     induction, and state the theorem and proof in terms of this
     defined proposition.  *)
+
+Definition P_pa := fun n m p => n + (m + p) = n + m + p.
+Definition P_pa' := forall n m p, n + (m + p) = n + m + p.
+Definition P_pa''(n m p : nat) := n + (m + p) = n + m + p.
+
+Theorem plus_assoc'' : forall n m p, P_pa n m p.
+Proof. 
+  intros n m p. unfold P_pa. induction n; auto.
+  simpl. rewrite <- IHn. auto.
+Qed.
+Theorem plus_assoc''_ : P_pa'.
+Proof. 
+  intros n m p. induction n; auto.
+  simpl. rewrite <- IHn. auto.
+Qed.
+Theorem plus_assoc''__ : forall n m p, P_pa'' n m p.
+Proof. 
+  intros n m p. unfold P_pa''. induction n; auto.
+  simpl. rewrite <- IHn. auto.
+Qed.
+
+Definition P_pc := fun n m => n + m = m + n.
+Definition P_pc' := forall n m, n + m = m + n.
+Definition P_pc''(n m : nat) := n + m = m + n.
+
+Theorem plus_comm''' : forall n m, P_pc n m.
+Proof. 
+  intros n m. unfold P_pc. induction n; auto.
+  simpl. rewrite -> IHn. auto.
+Qed.
+Theorem plus_comm'''_ : P_pc'.
+Proof. 
+  intros n m. induction n; auto.
+  simpl. rewrite -> IHn. auto.
+Qed.
+Theorem plus_comm'''__ : forall n m, P_pc'' n m.
+Proof. 
+  intros n m. unfold P_pc''. induction n; auto.
+  simpl. rewrite -> IHn. auto.
+Qed.
 
 (* FILL IN HERE *)
 (** [] *)
@@ -829,8 +869,8 @@ Admitted.
     inductive definition of [gorgeous]...
     Inductive gorgeous : nat -> Prop :=
          g_0 : gorgeous 0
-       | g_plus3 : forall n, gorgeous n -> gorgeous (3+m)
-       | g_plus5 : forall n, gorgeous n -> gorgeous (5+m).
+       | g_plus3 : forall n, gorgeous n -> gorgeous (3+n)
+       | g_plus5 : forall n, gorgeous n -> gorgeous (5+n).
     ...to give rise to an induction principle that looks like this...
     gorgeous_ind_max :
        forall P : (forall n : nat, gorgeous n -> Prop),
@@ -1251,6 +1291,7 @@ Proof.
     apply ev_SS. 
     apply IHn'.  unfold even.  unfold even in H.  simpl in H. apply H. 
 Qed. 
+
 
 (* ######################################################### *)
 (** ** The Coq Trusted Computing Base *)
