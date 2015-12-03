@@ -285,6 +285,96 @@ Definition my_4 : forall n, forall _ : beautiful n, beautiful (3+n) :=
 Definition my_5 (n : nat) (H : beautiful n) := 
     b_sum 3 n b_3 H.
 
+Print my_1.
+Print my_2.
+Print my_3.
+Print my_4.
+Print my_5.
+Parameter  F :  nat -> Set .
+Theorem t :  forall x:nat ,  F (1+x) . admit. Qed.
+Definition t':= fun    x:nat => F (1+x).
+Definition t'':= forall x:nat, F (1 + x).
+Definition t'''(x:nat) := F(1+x).
+Set Printing Universe.
+
+Print t.
+(* t = t_admitted *)
+(*      : forall x : nat, F (1 + x) *)
+
+(* Argument scope is [nat_scope] *)
+
+Print t'.
+(* t' = fun x : nat => F (1 + x) *)
+(*      : nat -> Set *)
+
+Print t''.
+(* t'' = forall x : nat, F (1 + x) *)
+(*      : Set *)
+
+Print t'''.
+(* t''' = fun x : nat => F (1 + x) *)
+(*      : nat -> Set *)
+
+(* Argument scope is [nat_scope] *)
+
+Check t  1.
+(* t 1 *)
+(*      : F (1 + 1) *)
+
+Check t' 1.
+(* t' 1 *)
+(*      : Set *)
+
+(* Check t'' 1. *)
+
+Check t''' 1.
+
+
+Definition x := fun x:nat => nat.
+Definition y := forall x:nat, Set.
+Check x:y.
+
+Definition ab_ := fun x:nat => 5.
+Definition ab := fun x:nat => nat.
+Definition ab' := forall x:nat, nat.
+Definition ab'' := forall x:nat, Set.
+
+Print ab_.
+(* ab_ = fun _ : nat => 5 *)
+(*      : nat -> nat *)
+
+(* Argument scope is [nat_scope] *)
+
+
+Print ab.
+(* ab = fun _ : nat => nat *)
+(*      : nat -> Set *)
+
+(* Argument scope is [nat_scope] *)
+Print ab'.
+(* ab' = nat -> nat *)
+(*      : Set *)
+
+Print ab''.
+(* ab'' = nat -> Set *)
+(*      : Type *)
+
+Check ab_:ab'.
+Check ab:ab''.
+Check forall _:nat, nat.
+Check nat -> nat.
+Check _:nat -> nat.
+Definition aa := fun x:nat => 5.
+(* Definition aa' := forall x:nat, 5. *)
+Check fun x:nat => 5.
+(* Check forall x:nat, 5. *)
+Check let x := True in x.
+Check let x := 5 in x.
+
+(* https://coq.inria.fr/refman/Reference-Manual006.html *)
+(* 4.2-lam *)
+(* fun's type : forall? *)
+                                        
 Definition b_plus3' : forall n, beautiful n -> beautiful (3+n) := 
   fun (n : nat) => fun (H : beautiful n) =>
     b_sum 3 n b_3 H.
@@ -299,7 +389,8 @@ Definition b_plus3'' (n : nat) (H : beautiful n) : beautiful (3+n) :=
   b_sum 3 n b_3 H.
 
 Check b_plus3''.
-(* ===> b_plus3'' : forall n, beautiful n -> beautiful (3+n) *)
+(* b_plus3'' *)
+(*      : forall n : nat, beautiful n -> beautiful (3 + n) *)
 
 (** When we view the proposition being proved by [b_plus3] as a function type,
     one aspect of it may seem a little unusual. The second argument's
@@ -333,11 +424,27 @@ Definition beautiful_plus3' : Prop :=
 (** Or, equivalently, we can write it in more familiar notation: *)
 
 Definition beautiful_plus3'' : Prop :=
-  forall n, beautiful n -> beautiful (n+3). 
+  forall n, beautiful n -> beautiful (3+n).
 
+Check (b_plus3'' 5).
+(* Check (beautiful_plus3 5). *)
 Print beautiful_plus3.
 Print beautiful_plus3'.
 Print beautiful_plus3''.
+
+Theorem bp3 : forall n, forall (_ : beautiful n), beautiful (n+3).
+Proof.
+  intros. apply b_sum; auto. constructor.
+Qed.
+(* bp3 =  *)
+(* fun (n : nat) (H : beautiful n) => b_sum n 3 H b_3 *)
+(*      : forall n : nat, beautiful n -> beautiful (n + 3) *)
+Print beautiful_plus3'.
+Check b_plus3':beautiful_plus3''.
+(* changed n+3 in beautiful_plus3'' to 3+n *)
+
+(* Argument scopes are [nat_scope _] *)
+
 
 (** In general, "[P -> Q]" is just syntactic sugar for
     "[forall (_:P), Q]". *)
@@ -597,6 +704,7 @@ Definition p : ex _ (fun n => beautiful (S n)) :=
 (* ##################################################### *)
 (** ** Giving Explicit Arguments to Lemmas and Hypotheses *)
 
+
 (** Even when we are using tactic-based proof, it can be very useful to
 understand the underlying functional nature of implications and quantification. 
 
@@ -679,7 +787,9 @@ intro n.
 Show Proof.
 apply S. 
 Show Proof.
-apply n. Defined.
+apply n.
+Show Proof.
+Defined.
 
 Print add1. 
 (* ==>
@@ -698,6 +808,7 @@ Definition len {X : Type} : list X -> nat.
 intros l.
 Show Proof.
 destruct l eqn:T.
+Show Proof.
 apply 0.
 Show Proof.
 apply S.
@@ -711,8 +822,77 @@ Theorem len_well_defined :
 Proof with eauto.
   intros.
   induction l...
-Qed.  
+Qed.
 
+(* QQQQQQQQQQQQQQQQQQQ fix tactic? *)
+Fixpoint fib (n : nat) : nat.
+destruct n.
+Show Proof.
+-
+apply 0.
+-
+(* remember (S n) as m. *)
+Show Proof.
+(* induction n. *)
+inversion n.
+(* destruct n. *)
+Show Proof.
+*
+apply 1.
+*
+Show Proof.
+apply (fun x y => x + y).
+Show Proof.
+apply (fib n).
+Show Proof.
+apply (fib H).
+Show Proof.
+Defined.
+
+Print fib.
+Definition fib_0 : fib 0 = 0. auto. Defined.
+Definition fib_1 : fib 1 = 1. auto. Defined.
+Definition fib_2 : fib 2 = 1. auto. Defined.
+Definition fib_3 : fib 3 = 2. auto. Defined.
+Definition fib_4 : fib 4 = 3. auto. Defined.
+Definition fib_5 : fib 5 = 5. auto. Defined.
+
+Theorem fib_well_def : forall n, fib (n+2) = fib (n+1) + fib (n).
+Proof.
+  intros.
+  rewrite <- plus_comm.
+  induction n.
+- auto.
+- 
+  rewrite plus_comm with (n:=(fib (S n +1))).
+  SearchPattern (_ + _ = _ + _ -> _ = _).
+  SearchPattern (_ = _ -> _ + _ = _ + _).
+  assert(H : forall a b c, a = b -> c + a = c + b) by auto.
+  remember (fib (S n)) as x.
+  remember (fib (S n + 1)) as y.
+  simpl.
+  rewrite Heqx.
+  rewrite <- plus_assoc.
+  apply H.
+  rewrite Heqy.
+  assert(H2 : S n + 1 = 2 + n) by omega.
+  rewrite H2.
+  rewrite IHn.
+  assert(H3 : forall a b c, a = b + c -> a = c + b).
+  intros.
+  rewrite H0. omega.
+  apply H3.
+  apply H.
+  SearchPattern(_ + _ = _ + _).
+  rewrite plus_comm.
+  auto.
+  
+  (* symmetry. *)
+  (* simpl. *)
+  (* apply plus_reg_l with (p:=(fib (S n))). *)
+  (* apply plus_reg_l with (p:=(fib (S n))) (n:= (fib n) + (fib (S n))) (m:=(fib (S n + 1))). *)
+Qed.
+  
 (** Notice that we terminate the [Definition] with a [.] rather than with
 [:=] followed by a term.  This tells Coq to enter proof scripting mode
 to build an object of type [nat -> nat].  Also, we terminate the proof
