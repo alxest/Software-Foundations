@@ -95,6 +95,26 @@ Fixpoint ceval_step2 (st : state) (c : com) (i : nat) : state :=
     so that we can distinguish between normal and abnormal
     termination. *)
 
+Module ifTest.
+Inductive ab : Set :=
+  a : ab
+| b : ab.
+Check if (a) then 0 else 1.
+Eval compute in if (a) then 0 else 1.
+Eval compute in if (b) then 0 else 1.
+(* Check if (b) then 0 else a. *)
+(* QQQQQQQQQQQQQQQQQQQQ type check error, why? *)
+Inductive abc : Set :=
+  a_ : abc
+| b_ : abc
+| c_ : abc.
+(* Eval compute in if (a_) then 0 else 1. *)
+(* Toplevel input, characters 16-37: *)
+(* > Eval compute in if (a_) then 0 else 1. *)
+(* >                 ^^^^^^^^^^^^^^^^^^^^^ *)
+(* Error: If is only for inductive types with two constructors. *)
+End ifTest.
+
 Fixpoint ceval_step3 (st : state) (c : com) (i : nat) 
                     : option state :=
   match i with 
@@ -166,6 +186,14 @@ Definition test_ceval (st:state) (c:com) :=
   | Some st => Some (st X, st Y, st Z)
   end.  
 
+Eval compute in 
+     (test_ceval empty_state 
+         (X ::= ANum 2;;
+          IFB BLe (AId X) (ANum 1)
+            THEN Y ::= ANum 3 
+            ELSE Z ::= ANum 4
+          FI)).
+
 (* Eval compute in 
      (test_ceval empty_state 
          (X ::= ANum 2;;
@@ -181,15 +209,28 @@ Definition test_ceval (st:state) (c:com) :=
    [X] (inclusive: [1 + 2 + ... + X]) in the variable [Y].  Make sure
    your solution satisfies the test that follows. *)
 
-Definition pup_to_n : com := 
-  (* FILL IN HERE *) admit.
+Definition pup_to_n : com :=
+  (* Z ::= ANum 1;; *)
+  (* WHILE BLe (AId Z) (AId X) *)
+  (* DO *)
+  (* Y ::= APlus (AId Z) (AId Y);; *)
+  (* Z ::= APlus (AId Z) (ANum 1) *)
+  (* END ;; *)
+  (* X ::= ANum 0;; *)
+  (* Z ::= ANum 0 *)
+  WHILE BNot (BEq (AId X) (ANum 0))
+        DO
+        Y ::= APlus (AId X) (AId Y);;
+        X ::= AMinus (AId X) (ANum 1)
+        END
+.
 
-(* 
+Eval compute in test_ceval (update empty_state X 5) pup_to_n.
+
 Example pup_to_n_1 : 
   test_ceval (update empty_state X 5) pup_to_n
   = Some (0, 15, 0).
 Proof. reflexivity. Qed.
-*)
 (** [] *)
 
 (** **** Exercise: 2 stars, optional (peven) *)
@@ -197,8 +238,46 @@ Proof. reflexivity. Qed.
     sets [Z] to [1] otherwise.  Use [ceval_test] to test your
     program. *)
 
-(* FILL IN HERE *)
+Definition peven_fail : com :=
+  WHILE (BLe (ANum 0) (AId X)) DO
+        X ::= AMinus (AId X) (ANum 2)
+  END ;;
+  IFB (BEq (ANum 0) (AId X))
+  THEN Z ::= (ANum 0)
+  ELSE Z ::= (ANum 1)
+  FI
+.
+(* X cannot go lower than 0 !!! inf loop -> None ! *)
+
+Definition peven : com :=
+  WHILE (BAnd (BNot (BEq (ANum 0) (AId X))) (BNot (BEq (ANum 1) (AId X)))) DO
+        X ::= AMinus (AId X) (ANum 2)
+  END ;;
+  IFB (BEq (ANum 0) (AId X))
+  THEN Z ::= (ANum 0)
+  ELSE Z ::= (ANum 1)
+  FI
+.
+
 (** [] *)
+Check ex_intro.
+Print ex.
+
+(* Theorem tmpp : 1 + 1 = 2. *)
+(* Definition tmp := test_ceval (update empty_state X 77) peven. *)
+(* Definition tmp_ := test_ceval (update empty_state X 77) peven = Some (0, 0, 1). *)
+(* Definition tmp__ : test_ceval (update empty_state X 77) peven = Some (0, 0, 1). *)
+
+(* QQQQQQQQQQQQQQQQQQQQ *)
+(* Compute just few steps? *)
+(* normalize, normalize1 tactic in SF final exam 08? *)
+(* cannot find tactic and cannot use it here *)
+(* also, in 08 file, normalize tactic can be used inside theorem proof but not in the form of "eval compute in blah *)
+Eval compute in test_ceval (update empty_state X 77) peven.
+
+Lemma peven_test1 :
+  exists x, test_ceval (update empty_state X 77) peven = Some (x, 0, 1).
+Proof. exists 1. reflexivity. Qed.
 
 (* ################################################################ *)
 (** ** Equivalence of Relational and Step-Indexed Evaluation *)
@@ -209,6 +288,261 @@ Proof. reflexivity. Qed.
     Make sure you understand the statements of the theorems and can
     follow the structure of the proofs. *)
 
+Lemma some_implies_non_zero : forall i c st st2, ceval_step st c i = Some st2 -> i <> O.
+Proof.
+  intros. destruct i. inversion H. auto.
+Qed.
+
+
+Lemma lem : forall i c st st2, ceval_step st c i = Some st2 -> ceval_step st c (S i) = Some st2.
+  intros i c.
+  generalize dependent i.
+  induction c; intros; auto; assert(G := H); apply some_implies_non_zero in G.
+  - destruct i.
+  destruct G; auto.
+  simpl in H; auto.
+  - destruct i0.
+  destruct G; auto.
+  simpl in H; auto.
+  - destruct i.
+  destruct G; auto.
+  simpl in H; auto. destruct (ceval_step st c1 i) eqn:T.
+  apply IHc1 in T.
+  apply IHc2 in H.
+  rewrite <- H.
+  remember (S i) as j.
+  simpl. rewrite T. auto.
+  inversion H.
+  - destruct i.
+  destruct G; auto.
+  simpl in H; auto.
+  remember (S i) as j.
+  simpl.
+  destruct (beval st b) eqn:T.
+  apply IHc1 in H. rewrite <- H. auto.
+  apply IHc2 in H. rewrite <- H. auto.
+  -
+    generalize dependent st2.
+    generalize dependent st.
+    generalize dependent c.
+    generalize dependent b.
+    
+  induction i.
+  destruct G; auto. clear G.
+  (* destruct i. *)
+  (* destruct G; auto. clear G. *)
+  (* ---------------------------------------------------- *)
+
+  intros.
+
+  (*   Heqx : ceval_step st c i = Some s *)
+  (* H : ceval_step s (WHILE b DO c END) i = Some st2 *)
+  (* H0 : beval st b = true *)
+  (* TT : ceval_step st c (S i) = Some s *)
+  (* ============================ *)
+  (*  ceval_step s (WHILE b DO c END) (S i) = ceval_step s (WHILE b DO c END) i *)
+
+
+  (* ---------------------------------------------------------- *)
+
+  remember (S i) as j.
+  destruct (beval st b) eqn:H0.
+  (* assert(beval st b = true) by admit. *)
+  
+  simpl. rewrite H0.
+  rewrite Heqj in H. simpl in H. rewrite H0 in H.
+  remember (ceval_step st c i) as x.
+  destruct x.
+  symmetry in Heqx.
+  assert(TT:=Heqx).
+  apply IHc in TT.
+  rewrite <- Heqj in TT.
+  rewrite TT.
+  (* rewrite <- H. *)
+  subst.
+
+  apply IHi.
+  apply some_implies_non_zero in Heqx. auto.
+  intros; auto. apply H.
+  inversion H.
+    (* ----------------------------------------------------- *)
+  simpl. rewrite H0. subst. simpl in H. rewrite H0 in H. auto.
+Qed.
+  (*   inversion H. *)
+
+
+  (* remember (S i) as j. simpl. destruct (beval st b) eqn:T. *)
+  (* remember (ceval_step st c i) as x. *)
+  (* symmetry in Heqx. *)
+  (* assert(K := Heqx). *)
+  (* destruct x. *)
+  (* apply IHc in K. *)
+  (* rewrite <- Heqj in K. *)
+  (* rewrite K. rewrite <- H. *)
+  (* assert(L := K). *)
+  (* apply IHc in L. *)
+  (* rewrite <- K in L. *)
+  (* subst. simpl. *)
+  (* rewrite T. *)
+  (* rewrite Heqx. *)
+  (* destruct (beval s b) eqn:TT. *)
+  
+  (* simpl in H; auto. *)
+  (* rewrite <- H. *)
+  
+  (* destruct (beval st b) eqn:T. *)
+  (* * destruct i. simpl in H. inversion H. *)
+  (*   remember (ceval_step st c (S i)) as M. *)
+  (*   destruct M. *)
+  (*   simpl in H. destruct (beval s b); auto. *)
+  (*   symmetry in HeqM. apply IHc in HeqM. apply IHc in HeqM. *)
+    
+  (* * simpl; rewrite T; subst; auto. *)
+  (* * destruct (ceval_step st c i) eqn:T2. *)
+  (* simpl. rewrite T. *)
+
+
+
+
+
+(* Lemma lem_ : forall i c st st2, ceval_step st c i = Some st2 -> ceval_step st c (S i) = Some st2. *)
+(*   induction i. *)
+(*   intros. inversion H. *)
+(*   intros. *)
+(*   remember (ceval_step st c i) as v. *)
+(*   destruct v. *)
+(*   * *)
+(*   symmetry in Heqv. *)
+(*   assert(Heqv2 := Heqv). *)
+(*   apply IHi in Heqv. *)
+(*   rewrite H in Heqv. *)
+(*   inversion Heqv. subst. clear Heqv. *)
+(*   assert(H2 := H). *)
+(*   rename H into js. *)
+(*   rename Heqv2 into is. *)
+(*   simpl in js. *)
+(*   remember (S i) as j. *)
+(*   simpl. *)
+(*   rewrite <- js. *)
+(*   rewrite <- is in H2. *)
+(*   destruct c; try rewrite <- H2; auto. *)
+(*   - admit. *)
+(*     (* destruct (ceval_step st c1 i) eqn:iT. destruct (ceval_step st c1 j) eqn:jT. *) *)
+(*     (* subst. *) *)
+(*     (* rewrite js. *) *)
+(*     (* rewrite <- is. *) *)
+(*   - assert(G: i <> 0). apply some_implies_non_zero in is. auto. *)
+(*     destruct i. destruct G; auto. *)
+(*     clear G. *)
+(*     destruct (beval st b) eqn:T; auto. *)
+(*     simpl in is. rewrite T in is. *)
+(*     simpl in H2. rewrite T in H2. *)
+    
+(*   reflexivity. *)
+(*   rewrite H2. *)
+
+
+
+
+
+(* Lemma lem2 : forall i c st st2, ceval_step st c i = Some st2 -> ceval_step st c (S i) = Some st2 -> ceval_step st c (S (S i)) = Some st2. *)
+(* Lemma lem3 : forall i c st, ceval_step st c i = ceval_step st c (S i) -> ceval_step st c (S i) = ceval_step st c (S (S i)). *)
+
+Theorem ceval_step__ceval: forall c st st',
+      (exists i, ceval_step st c i = Some st') ->
+      c / st || st'.
+Proof.
+  intros.
+  destruct H.
+  generalize dependent st'.
+  generalize dependent st. (* third case ! st -> st', st -> st' *)
+  induction c; intros; simpl; auto.
+  -
+  destruct x; simpl in H; inversion H.
+  constructor.
+  -
+  destruct x; simpl in H; inversion H.
+  constructor; auto.
+  -
+  destruct x; simpl in H; inversion H.
+  remember (ceval_step st c1 x) as t.
+  destruct t.
+  (* QQQQQQQQQQQQQQQQQQQQQQ inversion here does not work! *)
+  apply E_Seq with (st':=s).
+  apply IHc1. apply lem. auto.
+  apply IHc2. apply lem. auto.
+  inversion H.
+  -
+  destruct x; simpl in H; inversion H.
+  destruct (beval st b) eqn:T.
+  apply E_IfTrue; auto. apply IHc1. apply lem. auto.
+  apply E_IfFalse; auto. apply IHc2. apply lem. auto.
+  -
+  (* destruct x; simpl in H; inversion H. *)
+  (* destruct (beval st b) eqn:T. *)
+  (* Abort All.  *)
+
+    (* generalize dependent st. *)
+    (* generalize dependent st'. *)
+    (* generalize dependent x. *)
+    (* induction (WHILE b DO c END). admit. admit. admit. admit. *)
+    (* intros. *)
+    (* destruct (beval st b0) eqn:T. *)
+    (* eapply E_WhileLoop; auto. *)
+    (* Abort All. *)
+
+    generalize dependent st.
+    generalize dependent st'.
+    generalize dependent b.
+    generalize dependent c.
+    
+    induction x; intros. + simpl in H; inversion H.
+    + apply IHx.
+      * intros. simpl in H.
+      apply lem in H0.
+      apply IHc in H0. auto.
+      * rewrite <- H. simpl.
+        destruct (beval st b) eqn:Tb.
+          simpl in H. rewrite Tb in H.
+          remember (ceval_step st c x) as m.
+          destruct m. symmetry in Heqm. 
+        destruct (ceval_step st c x) eqn:Tc.
+      
+
+      
+      destruct x.
+      * inversion H.
+        destruct (beval st b) eqn:T. inversion H1. inversion H1; subst. apply E_WhileEnd; auto.
+      * apply IHx. intros.
+      
+    simpl in H. rewrite T in *; subst. apply 
+    apply IHx.
+    intros.
+  (* apply E_WhileLoop with (st':=st'); auto. apply IHc. apply lem. *)
+    
+  (* constructor; auto. *)
+   
+  (* unfold ceval_step in H. *)
+  (* simpl in H. *)
+  (* compute in H. *)
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+(* QQQQQQQQQQQQQQQQQQQQQQQQ Why Seq i-1, i-1? not i-1, i-2 ? *)
+
+    
 Theorem ceval_step__ceval: forall c st st',
       (exists i, ceval_step st c i = Some st') ->
       c / st || st'.
