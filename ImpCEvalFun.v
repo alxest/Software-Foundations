@@ -448,7 +448,52 @@ Qed.
 (* Lemma lem2 : forall i c st st2, ceval_step st c i = Some st2 -> ceval_step st c (S i) = Some st2 -> ceval_step st c (S (S i)) = Some st2. *)
 (* Lemma lem3 : forall i c st, ceval_step st c i = ceval_step st c (S i) -> ceval_step st c (S i) = ceval_step st c (S (S i)). *)
 
-Theorem ceval_step__ceval: forall c st st',
+Theorem ceval_step__ceval1: forall c st st',
+      (exists i, ceval_step st c i = Some st') ->
+      c / st || st'.
+Proof.
+  intros.
+  destruct H.
+  generalize dependent st'.
+  generalize dependent st. (* third case ! st -> st', st -> st' *)
+  generalize dependent c.
+  induction x; intros; simpl.
+  - inversion H.
+  - simpl in H.
+    induction c. (* try (inversion H; constructor; auto). *)
+    + inversion H; constructor.
+    + inversion H.
+      constructor. auto.
+    + remember (ceval_step st c1 x) as a.
+      symmetry in Heqa.
+      destruct a.
+      * apply IHx in Heqa.
+        eapply E_Seq. apply Heqa. apply IHx in H. apply H.
+      * inversion H.
+    + destruct (beval st b) eqn:T.
+      * constructor; auto.
+      * apply E_IfFalse; auto.
+    +
+      remember (ceval_step st c x) as a.
+      destruct (beval st b) eqn:T.
+      {
+        destruct a. 
+        * eapply E_WhileLoop; auto.
+          symmetry in Heqa.
+          assert(G:=Heqa).
+          apply IHx in G.
+          apply G.
+          apply IHx in H.
+          apply H.
+        * inversion H.
+      }
+      {
+        inversion H; subst; clear H.
+        apply E_WhileEnd; auto.
+      }
+Qed.
+
+Theorem ceval_step__ceval2: forall c st st',
       (exists i, ceval_step st c i = Some st') ->
       c / st || st'.
 Proof.
@@ -543,82 +588,100 @@ Proof.
 (*       | WHILE b1 DO c1 END => *)
 (*           then LETOPT st' <== ceval_step st c1 i' IN ceval_step st' c i' *)
 
-    
-      induction x. 
-      * inversion H.
+
+    remember (ceval_step st c x).
+    symmetry in Heqo.
+    destruct o eqn:To; subst.
+    {
+      destruct (beval st b) eqn:T.
       *
+        (* eapply E_WhileLoop; auto. *)
+        (* apply lem in H. *)
+        (* simpl in H. *)
+        (* rewrite T in H. *)
+        (* eapply IHc. *)
+        (* rewrite Heqo in H. *)
+        (* apply  Heqo. *)
+
+        
+
+      Admitted.
+      (* symmetry. *)
+      (* apply Heqo. *)
+      (* induction x.  *)
+      (* * inversion H. *)
+      (* * *)
 
          
           
-        apply IHx.
-         Lemma wrong: exists
-                       (b: bexp)
-                       (c: com)
-                       (IHc: forall(x:nat)(st st':state), ceval_step st c x = Some st' -> c /  st || st')
-                       (x: nat)
-                       (st: state)
-                       (st': state)
-                       (H: ceval_step st (WHILE b DO c END) (S x) = Some st')
-                       (IHx: ceval_step st (WHILE b DO c END) x = Some st' -> (WHILE b DO c END) / st || st'),
-                       ~(ceval_step st (WHILE b DO c END) x = Some st').
-        Proof.
-          exists BFalse.
-          exists SKIP.
-          eexists. intros. { destruct x. inversion H. simpl in H. inversion H; subst. constructor. }
-          exists 0.
-          exists empty_state.
-          exists empty_state.
-          eexists. simpl. auto.
-          exists. simpl. intros. inversion H.
-          unfold not.
-          intros.
-          simpl in H.
-          inversion H.
-        Qed.
+        (* apply IHx. *)
+        (*  Lemma wrong: exists *)
+        (*                (b: bexp) *)
+        (*                (c: com) *)
+        (*                (IHc: forall(x:nat)(st st':state), ceval_step st c x = Some st' -> c /  st || st') *)
+        (*                (x: nat) *)
+        (*                (st: state) *)
+        (*                (st': state) *)
+        (*                (H: ceval_step st (WHILE b DO c END) (S x) = Some st') *)
+        (*                (IHx: ceval_step st (WHILE b DO c END) x = Some st' -> (WHILE b DO c END) / st || st'), *)
+        (*                ~(ceval_step st (WHILE b DO c END) x = Some st'). *)
+        (* Proof. *)
+        (*   exists BFalse. *)
+        (*   exists SKIP. *)
+        (*   eexists. intros. { destruct x. inversion H. simpl in H. inversion H; subst. constructor. } *)
+        (*   exists 0. *)
+        (*   exists empty_state. *)
+        (*   exists empty_state. *)
+        (*   eexists. simpl. auto. *)
+        (*   exists. simpl. intros. inversion H. *)
+        (*   unfold not. *)
+        (*   intros. *)
+        (*   simpl in H. *)
+        (*   inversion H. *)
+        (* Qed. *)
         
-        clear IHx.
-        (* only c binding in IHc, others no binding no meaning *)
+    (*     clear IHx. *)
         
-        destruct (ceval_step st (WHILE b DO c END) x) eqn:T.
-        {
-          apply lem in T.
-          rewrite H in T.
-          auto.
-        }
-        {
-          destruct x.
-          {
-            simpl in T. clear T.
-            simpl in H. destruct (beval st b) eqn:T; auto.
-          }
-          {
-            simpl in T.
-            destruct (beval st b) eqn:TT; auto.
-          }
-          simpl in H.
-          destruct (beval st b) eqn:TT.
-        }
+    (*     destruct (ceval_step st (WHILE b DO c END) x) eqn:T. *)
+    (*     { *)
+    (*       apply lem in T. *)
+    (*       rewrite H in T. *)
+    (*       auto. *)
+    (*     } *)
+    (*     { *)
+    (*       destruct x. *)
+    (*       { *)
+    (*         simpl in T. clear T. *)
+    (*         simpl in H. destruct (beval st b) eqn:T; auto. *)
+    (*       } *)
+    (*       { *)
+    (*         simpl in T. *)
+    (*         destruct (beval st b) eqn:TT; auto. *)
+    (*       } *)
+    (*       simpl in H. *)
+    (*       destruct (beval st b) eqn:TT. *)
+    (*     } *)
 
         
-        assert(H2 := H).
+    (*     assert(H2 := H). *)
 
-        simpl in H. destruct (beval st b) eqn:T.
-        {
-          apply E_WhileLoop with (st':=st'); auto.
-          destruct (ceval_step st c x) eqn:TT.
-          {
-            apply IHc in TT.
-          apply IHc; auto.
-          eapply IHc; eauto.
-          destruct (ceval_step st c x).
+    (*     simpl in H. destruct (beval st b) eqn:T. *)
+    (*     { *)
+    (*       apply E_WhileLoop with (st':=st'); auto. *)
+    (*       destruct (ceval_step st c x) eqn:TT. *)
+    (*       { *)
+    (*         apply IHc in TT. *)
+    (*       apply IHc; auto. *)
+    (*       eapply IHc; eauto. *)
+    (*       destruct (ceval_step st c x). *)
           
                                                    
 
-        apply IHx. intros.
+    (*     apply IHx. intros. *)
       
-    simpl in H. rewrite T in *; subst. apply 
-    apply IHx.
-    intros.
+    (* simpl in H. rewrite T in *; subst. apply  *)
+    (* apply IHx. *)
+    (* intros. *)
   (* apply E_WhileLoop with (st':=st'); auto. apply IHc. apply lem. *)
     
   (* constructor; auto. *)
@@ -710,6 +773,69 @@ Proof.
 []
 *)
 
+Theorem ceval_step_more1: forall i1 i2 st st' c,
+  i1 <= i2 -> 
+  ceval_step st c i1 = Some st' -> 
+  ceval_step st c i2 = Some st'.
+Proof.
+  intros.
+  induction H.
+  auto.
+  apply lem in IHle.
+  apply IHle.
+Qed.
+
+(* AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA *)
+(* Proving this seems much more easier than proving lem... *)
+Theorem ceval_step_more2: forall i1 i2 st st' c,
+  i1 <= i2 -> 
+  ceval_step st c i1 = Some st' -> 
+  ceval_step st c i2 = Some st'.
+Proof.
+  induction i1; intros.
+  * inversion H0.
+
+  *
+    (***************)(* simpl in H0. *)
+    (* rewrite <- H0 *)
+    destruct i2. inversion H.
+    (*******************)(* simpl. *)
+
+    induction c; intros; auto. (* eqn:T. *)
+    + simpl in H0.
+      simpl.
+      destruct (ceval_step st c1 i1) eqn:T.
+      - assert(G := T).
+        apply (IHi1 i2) in G; try omega.
+        rewrite G.
+        eapply IHi1; auto; try omega.
+      - inversion H0.
+      (* destruct (ceval_step st c2 i1) eqn:T2. *)
+      (* assert(G:=T2). *)
+      (* apply IHi1 with (i2:=i2) in G; try omega. *)
+      (* assert(K: Some(st') = Some(s0)). *)
+      (* rewrite <- H0. *)
+      (* rewrite <- T2. *)
+      
+      (* apply IHi1. omega. *)
+
+      (* destruct (ceval_step st c1 i1) eqn:T2. *)
+      (* inversion H0; subst. auto. *)
+    + simpl.
+      destruct (beval st b) eqn:T; simpl in H0; rewrite T in H0.
+      - apply IHi1; auto; try omega.
+      - apply IHi1; auto; try omega.
+    +  simpl.
+       destruct (beval st b) eqn:T; simpl in H0; rewrite T in H0.
+      - destruct (ceval_step st c i1) eqn:T2.
+        apply (IHi1 i2) in T2; try omega.
+        rewrite T2.
+        apply (IHi1 i2) in H0; try omega.
+        auto.
+        inversion H0.
+      - auto.
+Qed.
+
 Theorem ceval_step_more: forall i1 i2 st st' c,
   i1 <= i2 -> 
   ceval_step st c i1 = Some st' -> 
@@ -762,8 +888,54 @@ Theorem ceval__ceval_step: forall c st st',
       exists i, ceval_step st c i = Some st'.
 Proof. 
   intros c st st' Hce.
-  ceval_cases (induction Hce) Case.
-  (* FILL IN HERE *) Admitted.
+  (* ceval_cases (induction Hce) Case. *)
+  induction Hce.
+  * exists 1. auto.
+  * exists 1. simpl. rewrite H. auto.
+  * destruct IHHce1. destruct IHHce2.
+    exists (1 + x + x0). (******** not x + x0 + 1 ************)
+
+    assert(G:= (ceval_step__ceval c1 st st'  )).
+    Check (ex_intro ((fun i => (ceval_step st c1 i = Some st')))).
+    Check (ex_intro ((fun i => (ceval_step st c1 i = Some st'))) x H).
+    assert(GG:= (ceval_step__ceval c1 st st' (ex_intro ((fun i => (ceval_step st c1 i = Some st'))) x H))).
+    (* Check (ex_intro (forall i: nat, (ceval_step st c1 i = Some st'))). *)
+    (* (fun i => ceval_step st c1 i = Some st') *)
+
+    simpl.
+    eapply ceval_step_more in H. rewrite H.
+    eapply ceval_step_more in H0.rewrite H0.
+    auto.
+    omega. omega.
+  *
+    destruct IHHce.
+    exists (1+x).
+    simpl.
+    rewrite H.
+    auto.
+  *
+    destruct IHHce.
+    exists (1+x).
+    simpl.
+    rewrite H.
+    auto.
+  *
+    exists 1. simpl. rewrite H. auto.
+  *
+    destruct IHHce1.
+    destruct IHHce2.
+    exists (1+x+x0).
+    simpl.
+    rewrite H.
+    eapply ceval_step_more in H0.
+    rewrite H0.
+    eapply ceval_step_more in H1.
+    rewrite H1.
+    auto.
+    omega.
+    omega.
+Qed.
+          
 (** [] *)
 
 Theorem ceval_and_ceval_step_coincide: forall c st st',
