@@ -456,7 +456,8 @@ Proof.
   destruct H.
   generalize dependent st'.
   generalize dependent st. (* third case ! st -> st', st -> st' *)
-  induction c; intros; simpl; auto.
+  generalize dependent x.
+  induction c; intros; simpl. 
   -
   destruct x; simpl in H; inversion H.
   constructor.
@@ -469,14 +470,14 @@ Proof.
   destruct t.
   (* QQQQQQQQQQQQQQQQQQQQQQ inversion here does not work! *)
   apply E_Seq with (st':=s).
-  apply IHc1. apply lem. auto.
-  apply IHc2. apply lem. auto.
+  eapply IHc1; eauto. 
+  eapply IHc2; eauto. 
   inversion H.
   -
   destruct x; simpl in H; inversion H.
   destruct (beval st b) eqn:T.
-  apply E_IfTrue; auto. apply IHc1. apply lem. auto.
-  apply E_IfFalse; auto. apply IHc2. apply lem. auto.
+  apply E_IfTrue; auto. eapply IHc1; eauto.
+  apply E_IfFalse; auto. eapply IHc2. eauto.
   -
   (* destruct x; simpl in H; inversion H. *)
   (* destruct (beval st b) eqn:T. *)
@@ -491,29 +492,129 @@ Proof.
     (* eapply E_WhileLoop; auto. *)
     (* Abort All. *)
 
-    generalize dependent st.
-    generalize dependent st'.
-    generalize dependent b.
-    generalize dependent c.
-    
-    induction x; intros. + simpl in H; inversion H.
-    + apply IHx.
-      * intros. simpl in H.
-      apply lem in H0.
-      apply IHc in H0. auto.
-      * rewrite <- H. simpl.
-        destruct (beval st b) eqn:Tb.
-          simpl in H. rewrite Tb in H.
-          remember (ceval_step st c x) as m.
-          destruct m. symmetry in Heqm. 
-        destruct (ceval_step st c x) eqn:Tc.
-      
 
-      
-      destruct x.
+
+    
+    (* generalize dependent st. *)
+    (* generalize dependent st'. *)
+    (* generalize dependent b. *)
+    (* generalize dependent c. *)
+    
+    (* induction x; intros. + simpl in H; inversion H. *)
+    (* + apply IHx. *)
+    (*   * intros. simpl in H. *)
+    (*   apply lem in H0. *)
+    (*   apply IHc in H0. auto. *)
+    (*   * rewrite <- H. simpl. *)
+    (*     destruct (beval st b) eqn:Tb. *)
+    (*       simpl in H. rewrite Tb in H. *)
+    (*       remember (ceval_step st c x) as m. *)
+    (*       destruct m. symmetry in Heqm.  *)
+    (*     destruct (ceval_step st c x) eqn:Tc. *)
+
+
+
+
+
+
+
+
+(*     ceval_step =  *)
+(* fix ceval_step (st : state) (c : com) (i : nat) {struct i} :  *)
+(* option state := *)
+(*   match i with *)
+(*   | 0 => None *)
+(*   | S i' => *)
+(*       match c with *)
+(*       | SKIP => Some st *)
+(*       | l ::= a1 => Some (update st l (aeval st a1)) *)
+(*       | c1;; c2 => LETOPT st' <== ceval_step st c1 i' IN ceval_step st' c2 i' *)
+(*       | IFB b THEN c1 ELSE c2 FI => *)
+(*           if beval st b then ceval_step st c1 i' else ceval_step st c2 i' *)
+(*       | WHILE b1 DO c1 END => *)
+(*           if beval st b1 *)
+(*           then LETOPT st' <== ceval_step st c1 i' IN ceval_step st' c i' *)
+(*           else Some st *)
+(*       end *)
+(*   end *)
+(*      : state -> com -> nat -> option state *)
+
+
+(*       | WHILE b1 DO c1 END => *)
+(*           then LETOPT st' <== ceval_step st c1 i' IN ceval_step st' c i' *)
+
+    
+      induction x. 
       * inversion H.
-        destruct (beval st b) eqn:T. inversion H1. inversion H1; subst. apply E_WhileEnd; auto.
-      * apply IHx. intros.
+      *
+
+         
+          
+        apply IHx.
+         Lemma wrong: exists
+                       (b: bexp)
+                       (c: com)
+                       (IHc: forall(x:nat)(st st':state), ceval_step st c x = Some st' -> c /  st || st')
+                       (x: nat)
+                       (st: state)
+                       (st': state)
+                       (H: ceval_step st (WHILE b DO c END) (S x) = Some st')
+                       (IHx: ceval_step st (WHILE b DO c END) x = Some st' -> (WHILE b DO c END) / st || st'),
+                       ~(ceval_step st (WHILE b DO c END) x = Some st').
+        Proof.
+          exists BFalse.
+          exists SKIP.
+          eexists. intros. { destruct x. inversion H. simpl in H. inversion H; subst. constructor. }
+          exists 0.
+          exists empty_state.
+          exists empty_state.
+          eexists. simpl. auto.
+          exists. simpl. intros. inversion H.
+          unfold not.
+          intros.
+          simpl in H.
+          inversion H.
+        Qed.
+        
+        clear IHx.
+        (* only c binding in IHc, others no binding no meaning *)
+        
+        destruct (ceval_step st (WHILE b DO c END) x) eqn:T.
+        {
+          apply lem in T.
+          rewrite H in T.
+          auto.
+        }
+        {
+          destruct x.
+          {
+            simpl in T. clear T.
+            simpl in H. destruct (beval st b) eqn:T; auto.
+          }
+          {
+            simpl in T.
+            destruct (beval st b) eqn:TT; auto.
+          }
+          simpl in H.
+          destruct (beval st b) eqn:TT.
+        }
+
+        
+        assert(H2 := H).
+
+        simpl in H. destruct (beval st b) eqn:T.
+        {
+          apply E_WhileLoop with (st':=st'); auto.
+          destruct (ceval_step st c x) eqn:TT.
+          {
+            apply IHc in TT.
+          apply IHc; auto.
+          eapply IHc; eauto.
+          destruct (ceval_step st c x).
+          
+                                                   
+
+        apply IHx. intros.
       
     simpl in H. rewrite T in *; subst. apply 
     apply IHx.
